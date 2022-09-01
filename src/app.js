@@ -50,6 +50,17 @@ app.post('/participants', async (req, res) => {
 });
 
 
+app.get('/participants', (req, res) => {
+    db.collection('participants').find().toArray().then(data => {
+        res.send(data);
+    })
+});
+
+app.get('/messages', (req, res) => {
+    db.collection('messages').find().toArray().then(data => {
+        res.send(data);
+    })
+});
 
 
 
