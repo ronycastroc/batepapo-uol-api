@@ -57,7 +57,6 @@ app.post('/participants', async (req, res) => {
 
 });
 
-
 app.get('/participants', async (req, res) => {
     
     try {
@@ -111,11 +110,20 @@ app.post('/messages', async (req, res) => {
 
 })
 
-app.get('/messages', async (req, res) => {
+app.get('/messages/', async (req, res) => {
+    const limit = req.query.limit;
+    const { user } = req.headers;
 
     try {
         const listMessages = await db.collection('messages').find().toArray();
-        res.send(listMessages);
+
+        const messagesFilter = listMessages.filter(value => value.type === 'message' || value.type === 'status' || (value.type === 'private_message' && value.from === user) || (value.type === 'private_message' && value.to === user));
+
+        if(!limit) {
+            return res.send(messagesFilter);
+        }
+
+        res.send(messagesFilter.slice(-limit));        
 
     } catch (error) {
         res.status(500).send(error);
