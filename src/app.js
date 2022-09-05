@@ -6,8 +6,6 @@ import { MongoClient } from 'mongodb';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const date = dayjs().locale('pt-br').format(`HH:mm:ss`);
-
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -18,9 +16,18 @@ mongoClient.connect().then(() => {
     db = mongoClient.db('batepapouol');
 });
 
+let date;
+
+setInterval(() => {
+    date = dayjs().locale('pt-br').format(`HH:mm:ss`);
+}, 1000);
+
+/* Participants Routes */
+
 const participantSchema = joi.object({
     name: joi.string().required().min(2).max(10)
 });
+
 
 app.post('/participants', async (req, res) => {
     const { name } = req.body;
@@ -55,7 +62,7 @@ app.post('/participants', async (req, res) => {
         res.sendStatus(201);
         
     } catch (error) {
-        res.status(500).send(error);
+        res.status(500).send(error.message);
     }
 
 });
@@ -67,10 +74,13 @@ app.get('/participants', async (req, res) => {
         res.send(listParticipants);
 
     } catch (error) {
-        res.status(500).send(error);
+        res.status(500).send(error.message);
     } 
     
 });
+
+
+/* Messages Routes */
 
 const messageSchema = joi.object({
     to: joi.string().required(),
@@ -108,7 +118,7 @@ app.post('/messages', async (req, res) => {
         res.sendStatus(201);
 
     } catch (error) {
-        res.status(500).send(error);
+        res.status(500).send(error.message);
     }
 
 });
@@ -129,13 +139,19 @@ app.get('/messages/', async (req, res) => {
         res.send(messagesFilter.slice(-limit));        
 
     } catch (error) {
-        res.status(500).send(error);
+        res.status(500).send(error.message);
     } 
 
 });
 
+/* Status Routes */
+
 app.post('/status', async (req,res) => {
     const { user } = req.headers;
+    const statusUpdate = {
+        name: user,
+        lastStatus: Date.now()
+    } 
 
     try {
         const userStatus = await db.collection('participants').find().toArray();
@@ -146,19 +162,38 @@ app.post('/status', async (req,res) => {
             return res.sendStatus(404);
         }
 
-        await db.collection('participants').insertOne({
-            user,
-            lastStatus: Date.now()
-        })
+        await db.collection('participants').updateOne({ name: user }, { $set: statusUpdate } );
 
         res.sendStatus(200);
 
     } catch (error) {
-        res.status(500).send(error);
+        res.status(500).send(error.message);
     }
 });
 
+setInterval(async () => {
+    const time = Date.now()
+    const participants = await db.collection('participants').find().toArray();
 
+    const participantsInactive = participants.filter(value => (time - value.lastStatus) > 10000);
+    
+    console.log(participantsInactive);
+    
+    if (participantsInactive.length > 0) {
 
+        const messagesOut = participantsInactive.map(value => ({
+            from: value.name,
+            to: "Todos",
+            text: "sai da sala...",
+            type: "status",
+            time: date
+        })) 
+
+        await db.collection('participants').deleteMany(participantsInactive.name);
+
+        await db.collection('messages').insertMany(messagesOut);
+    }
+    
+}, 15000);
 
 app.listen(5000, () => console.log('Listen on 5000'));
