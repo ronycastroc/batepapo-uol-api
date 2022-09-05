@@ -59,6 +59,7 @@ app.post('/participants', async (req, res) => {
             type: 'status',
             time: date
         });    
+
         res.sendStatus(201);
         
     } catch (error) {
@@ -96,7 +97,7 @@ app.post('/messages', async (req, res) => {
 
     if (validation.error) {
         const error = validation.error.details.map(value => value.message);
-        res.status(422).send(error);
+        return res.status(422).send(error);
     }
 
     try {
@@ -160,7 +161,7 @@ app.delete('/messages/:idMessage', async (req, res) => {
 
         if (!findId) {
             return res.sendStatus(404);
-        }       
+        }        
         
         const response = await db.collection('messages').deleteOne({ _id: ObjectId(idMessage)} );
                
